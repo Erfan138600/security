@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<!--رمز نگاری-->
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سامانه رمزنگاری متن اختصاصی</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
+    <style>
+        @font-face {
+            font-family: 'Vazir';
+            src: url('https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/Vazir.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+        body {
+            font-family: 'Vazir', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f0f4f8;
+            background-image: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .file-drop-area {
+            border: 2px dashed #a5b4fc;
+            border-radius: 0.5rem;
+            transition: all 0.3s;
+        }
+        .file-drop-area:hover, .file-drop-area.dragover {
+            border-color: #6366f1;
+            background-color: rgba(165, 180, 252, 0.1);
+        }
+        .btn-gradient {
+            background: linear-gradient(45deg, #6366f1, #8b5cf6);
+            transition: all 0.3s;
+        }
+        .btn-gradient:hover {
+            background: linear-gradient(45deg, #4f46e5, #7c3aed);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+        .decrypt-animation {
+            animation: decrypt 1s forwards;
+        }
+        @keyframes decrypt {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .encrypt-animation {
+            animation: encrypt 1s forwards;
+        }
+        @keyframes encrypt {
+            0% { opacity: 0; transform: translateY(-10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="container mx-auto max-w-5xl">
+        <header class="text-center mb-8 mt-8">
+            <div class="flex justify-center">
+                <div class="animate-float glass rounded-full p-6 mb-4 inline-block">
+                    <i class="fas fa-shield-alt text-white text-4xl"></i>
+                </div>
+            </div>
+            <h1 class="text-4xl font-bold text-white mb-2">سامانه رمزنگاری متن اختصاصی</h1>
+            <p class="text-indigo-100 text-xl">امنیت اطلاعات شما، اولویت ماست</p>
+        </header>
+
+        <div class="glass rounded-xl p-6 mb-8 shadow-xl">
+            <div class="mb-6">
+                <div class="flex space-x-4 rtl:space-x-reverse mb-4">
+                    <button id="encrypt-tab" class="flex-1 py-3 px-4 rounded-lg font-medium bg-indigo-600 text-white">رمزنگاری</button>
+                    <button id="decrypt-tab" class="flex-1 py-3 px-4 rounded-lg font-medium bg-white text-indigo-600">رمزگشایی</button>
+                </div>
+            </div>
+
+            <!-- رمزنگاری -->
+            <div id="encrypt-section" class="space-y-6">
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">متن خود را وارد کنید:</label>
+                    <textarea id="text-to-encrypt" class="w-full h-48 p-4 border rounded-lg bg-white bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="متن خود را اینجا وارد کنید..."></textarea>
+                </div>
+
+                <div class="file-drop-area p-6 text-center">
+                    <div class="mb-4 text-gray-700">
+                        <i class="fas fa-file-upload text-3xl mb-2"></i>
+                        <p>فایل متنی خود را اینجا بکشید و رها کنید</p>
+                        <p class="text-sm text-gray-500">یا</p>
+                    </div>
+                    <input type="file" id="file-upload-encrypt" class="hidden" accept=".txt">
+                    <button id="browse-files-encrypt" class="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition">انتخاب فایل</button>
+                </div>
+
+                <div class="flex items-center mb-6">
+                    <input id="password-checkbox" type="checkbox" class="h-5 w-5 text-indigo-600">
+                    <label for="password-checkbox" class="mr-2 text-gray-700">استفاده از کلمه عبور اضافی (اختیاری)</label>
+                </div>
+
+                <div id="password-section" class="mb-6 hidden">
+                    <label class="block text-gray-700 font-medium mb-2">کلمه عبور:</label>
+                    <input type="password" id="encryption-password" class="w-full p-3 border rounded-lg bg-white bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="کلمه عبور خود را وارد کنید">
+                </div>
+
+                <div class="text-center">
+                    <button id="encrypt-button" class="btn-gradient text-white font-bold py-3 px-8 rounded-lg shadow-lg flex items-center mx-auto">
+                        <i class="fas fa-lock mr-2"></i>
+                        رمزنگاری متن
+                    </button>
+                </div>
+
+                <div id="encrypt-result" class="mt-8 hidden">
+                    <label class="block text-gray-700 font-medium mb-2">متن رمزنگاری شده:</label>
+                    <div class="relative">
+                        <textarea id="encrypted-text" class="w-full h-48 p-4 border rounded-lg bg-white bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-indigo-500" readonly></textarea>
+                        <button id="copy-encrypted" class="absolute top-2 left-2 bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button id="download-encrypted" class="absolute top-2 left-12 bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- رمزگشایی -->
+            <div id="decrypt-section" class="space-y-6 hidden">
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">متن رمزنگاری شده را وارد کنید:</label>
+                    <textarea id="text-to-decrypt" class="w-full h-48 p-4 border rounded-lg bg-white bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="متن رمزنگاری شده را اینجا وارد کنید..."></textarea>
+                </div>
+            
+                <div class="file-drop-area p-6 text-center">
+                    <div class="mb-4 text-gray-700">
+                        <i class="fas fa-file-upload text-3xl mb-2"></i>
+                        <p>فایل رمزنگاری شده خود را اینجا بکشید و رها کنید</p>
+                        <p class="text-sm text-gray-500">یا</p>
+                    </div>
+                    <input type="file" id="file-upload-decrypt" class="hidden" accept=".enc">
+                    <button id="browse-files-decrypt" class="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition">انتخاب فایل</button>
+                </div>
+            
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">کلمه عبور (اگر هنگام رمزنگاری استفاده شده):</label>
+                    <input type="password" id="decryption-password" class="w-full p-3 border rounded-lg bg-white bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="کلمه عبور را وارد کنید">
+                </div>
+
+                <div class="text-center">
+                    <button id="decrypt-button" class="btn-gradient text-white font-bold py-3 px-8 rounded-lg shadow-lg flex items-center mx-auto">
+                        <i class="fas fa-unlock mr-2"></i>
+                        رمزگشایی متن
+                    </button>
+                </div>
+
+                <div id="decrypt-result" class="mt-8 hidden">
+                    <label class="block text-gray-700 font-medium mb-2">متن رمزگشایی شده:</label>
+                    <div class="relative">
+                        <textarea id="decrypted-text" class="w-full h-48 p-4 border rounded-lg bg-white bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-indigo-500" readonly></textarea>
+                        <button id="copy-decrypted" class="absolute top-2 left-2 bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button id="download-decrypted" class="absolute top-2 left-12 bg-indigo-600 text-white p-2 rounded-md hover:bg-indigo-700">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center text-white py-4">
+            <p>&copy; ۱۴۰۲ - کلیه حقوق این سامانه رمزنگاری محفوظ است</p>
+            <p class="text-sm text-indigo-200 mt-2">این سامانه از الگوریتم اختصاصی رمزنگاری استفاده می‌کند که فقط در همین سایت قابل رمزگشایی است</p>
+        </footer>
+    </div>
+
+    <script>
+        // تعریف کلید رمزنگاری اختصاصی سایت (این کلید باید مخفی بماند)
+        const siteSpecificKey = "ZWdXrT7Yh9Lm2P4sKjNbVcXaQwE5Uy";
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // تب‌ها
+            const encryptTab = document.getElementById('encrypt-tab');
+            const decryptTab = document.getElementById('decrypt-tab');
+            const encryptSection = document.getElementById('encrypt-section');
+            const decryptSection = document.getElementById('decrypt-section');
+            
+            // رمزنگاری
+            const textToEncrypt = document.getElementById('text-to-encrypt');
+            const encryptButton = document.getElementById('encrypt-button');
+            const encryptResult = document.getElementById('encrypt-result');
+            const encryptedText = document.getElementById('encrypted-text');
+            const copyEncrypted = document.getElementById('copy-encrypted');
+            const downloadEncrypted = document.getElementById('download-encrypted');
+            
+            // رمزگشایی
+            const textToDecrypt = document.getElementById('text-to-decrypt');
+            const decryptButton = document.getElementById('decrypt-button');
+            const decryptResult = document.getElementById('decrypt-result');
+            const decryptedText = document.getElementById('decrypted-text');
+            const copyDecrypted = document.getElementById('copy-decrypted');
+            const downloadDecrypted = document.getElementById('download-decrypted');
+            
+            // کلمه عبور
+            const passwordCheckbox = document.getElementById('password-checkbox');
+            const passwordSection = document.getElementById('password-section');
+            const encryptionPassword = document.getElementById('encryption-password');
+            const decryptionPassword = document.getElementById('decryption-password');
+            
+            // آپلود فایل
+            const fileUploadEncrypt = document.getElementById('file-upload-encrypt');
+            const browseFilesEncrypt = document.getElementById('browse-files-encrypt');
+            const fileUploadDecrypt = document.getElementById('file-upload-decrypt');
+            const browseFilesDecrypt = document.getElementById('browse-files-decrypt');
+            
+            // تنظیم تب‌ها
+            encryptTab.addEventListener('click', function() {
+                encryptTab.classList.remove('bg-white', 'text-indigo-600');
+                encryptTab.classList.add('bg-indigo-600', 'text-white');
+                decryptTab.classList.remove('bg-indigo-600', 'text-white');
+                decryptTab.classList.add('bg-white', 'text-indigo-600');
+                encryptSection.classList.remove('hidden');
+                decryptSection.classList.add('hidden');
+            });
+            
+            decryptTab.addEventListener('click', function() {
+                decryptTab.classList.remove('bg-white', 'text-indigo-600');
+                decryptTab.classList.add('bg-indigo-600', 'text-white');
+                encryptTab.classList.remove('bg-indigo-600', 'text-white');
+                encryptTab.classList.add('bg-white', 'text-indigo-600');
+                decryptSection.classList.remove('hidden');
+                encryptSection.classList.add('hidden');
+            });
+            
+            // کلمه عبور اختیاری
+            passwordCheckbox.addEventListener('change', function() {
+                passwordSection.classList.toggle('hidden', !this.checked);
+            });
+            
+            // رویدادهای آپلود فایل
+            browseFilesEncrypt.addEventListener('click', function() {
+                fileUploadEncrypt.click();
+            });
+            
+            browseFilesDecrypt.addEventListener('click', function() {
+                fileUploadDecrypt.click();
+            });
+            
+            fileUploadEncrypt.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        textToEncrypt.value = event.target.result;
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            
+            fileUploadDecrypt.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        textToDecrypt.value = event.target.result;
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            
+            // تنظیم رویدادهای drag and drop
+            const fileDropAreas = document.querySelectorAll('.file-drop-area');
+            
+            fileDropAreas.forEach(area => {
+                area.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.classList.add('dragover');
+                });
+                
+                area.addEventListener('dragleave', function() {
+                    this.classList.remove('dragover');
+                });
+                
+                area.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('dragover');
+                    
+                    const file = e.dataTransfer.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    
+                    if (this.closest('#encrypt-section')) {
+                        reader.onload = function(event) {
+                            textToEncrypt.value = event.target.result;
+                        };
+                    } else {
+                        reader.onload = function(event) {
+                            textToDecrypt.value = event.target.result;
+                        };
+                    }
+                    
+                    reader.readAsText(file);
+                });
+            });
+            
+            // الگوریتم رمزنگاری اختصاصی 
+            function customEncrypt(text, password = "") {
+                try {
+                    // ترکیب کلید سایت با کلمه عبور کاربر اگر وجود داشته باشد
+                    const combinedKey = password ? siteSpecificKey + password : siteSpecificKey;
+                    
+                    // استفاده از CryptoJS برای رمزنگاری قوی
+                    const encrypted = CryptoJS.AES.encrypt(text, combinedKey).toString();
+                    
+                    // افزودن نشانگر الگوریتم به ابتدای متن رمزنگاری شده
+                    return "CUSTOM_ENC_V1:" + encrypted;
+                } catch (error) {
+                    console.error("خطا در رمزنگاری:", error);
+                    return null;
+                }
+            }
+            
+            // الگوریتم رمزگشایی اختصاصی
+            function customDecrypt(encryptedText, password = "") {
+                try {
+                    // بررسی نشانگر الگوریتم
+                    if (!encryptedText.startsWith("CUSTOM_ENC_V1:")) {
+                        throw new Error("این متن با الگوریتم این سایت رمزنگاری نشده است.");
+                    }
+                    
+                    // جدا کردن نشانگر از متن اصلی
+                    const actualEncrypted = encryptedText.replace("CUSTOM_ENC_V1:", "");
+                    
+                    // ترکیب کلید سایت با کلمه عبور کاربر اگر وجود داشته باشد
+                    const combinedKey = password ? siteSpecificKey + password : siteSpecificKey;
+                    
+                    // استفاده از CryptoJS برای رمزگشایی 
+                    const decrypted = CryptoJS.AES.decrypt(actualEncrypted, combinedKey).toString(CryptoJS.enc.Utf8);
+                    
+                    if (!decrypted) {
+                        throw new Error("رمزگشایی ناموفق بود. کلمه عبور اشتباه است یا متن خراب شده است.");
+                    }
+                    
+                    return decrypted;
+                } catch (error) {
+                    console.error("خطا در رمزگشایی:", error);
+                    return null;
+                }
+            }
+            
+            // رویداد دکمه رمزنگاری
+            encryptButton.addEventListener('click', function() {
+                const text = textToEncrypt.value.trim();
+                if (!text) {
+                    alert("لطفاً متنی را برای رمزنگاری وارد کنید.");
+                    return;
+                }
+                
+                const password = passwordCheckbox.checked ? encryptionPassword.value : "";
+                const encrypted = customEncrypt(text, password);
+                
+                if (encrypted) {
+                    encryptedText.value = encrypted;
+                    encryptResult.classList.remove('hidden');
+                    encryptResult.classList.add('encrypt-animation');
+                } else {
+                    alert("خطا در رمزنگاری. لطفاً دوباره تلاش کنید.");
+                }
+            });
+            
+            // رویداد دکمه رمزگشایی
+            decryptButton.addEventListener('click', function() {
+                const text = textToDecrypt.value.trim();
+                if (!text) {
+                    alert("لطفاً متنی را برای رمزگشایی وارد کنید.");
+                    return;
+                }
+                
+                const password = decryptionPassword.value;
+                const decrypted = customDecrypt(text, password);
+                
+                if (decrypted) {
+                    decryptedText.value = decrypted;
+                    decryptResult.classList.remove('hidden');
+                    decryptResult.classList.add('decrypt-animation');
+                } else {
+                    alert("خطا در رمزگشایی. لطفاً مطمئن شوید که متن به درستی رمزنگاری شده است و کلمه عبور صحیح است.");
+                }
+            });
+            
+            // رویدادهای کپی
+            copyEncrypted.addEventListener('click', function() {
+                encryptedText.select();
+                document.execCommand('copy');
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                }, 1500);
+            });
+            
+            copyDecrypted.addEventListener('click', function() {
+                decryptedText.select();
+                document.execCommand('copy');
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                }, 1500);
+            });
+            
+            // رویدادهای دانلود
+            downloadEncrypted.addEventListener('click', function() {
+                const text = encryptedText.value;
+                if (!text) return;
+                
+                const blob = new Blob([text], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.download = 'encrypted_text.enc';
+                a.href = window.URL.createObjectURL(blob);
+                a.click();
+            });
+            
+            downloadDecrypted.addEventListener('click', function() {
+                const text = decryptedText.value;
+                if (!text) return;
+                
+                const blob = new Blob([text], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.download = 'decrypted_text.txt';
+                a.href = window.URL.createObjectURL(blob);
+                a.click();
+            });
+        });
+    </script>
+</body>
+</html>
